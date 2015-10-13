@@ -3,15 +3,17 @@
     <head>
         <meta charset="utf-8">
         <title>Erstsemesterzahlen Uni Lübeck</title>
-        <script type="text/javascript" src="lib/d3.v3.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
         <style type="text/css">
-            .pagetitle {
-                font-size: 20px;
+            body {
                 font-family: Helvetica, Arial, sans-serif;
             }
 
+            #pagetitle {
+                font-size: 20px;
+            }
+
             .text {
-                font-family: Georgia, Times, serif;
                 font-size: 12px;
                 color: #666;
                 width: 1000px;
@@ -21,20 +23,25 @@
                 color: #fff;
                 padding: 4px;
             }
-</style>
+        </style>
     </head>
     <body>
         <h1 id="pagetitle">Entwicklung der Erstsemesterzahlen an der Universität zu Lübeck</h1>
-        <p id="description" class="text">Dargestellt sind die Erstsemesterzahlen für die einzelnen Studiengänge an der Universität zu Lübeck. Für die Jahre 1998 und früher liegen leider keine genauen Zahlen für die Mediziner vor, die Angaben sind geschätzt. Für die Jahre 2003 und 2005 gibt es leider gar keine Quellen. </p>
+        <p id="description" class="text">Dargestellt sind die Erstsemesterzahlen für die einzelnen Studiengänge an der Universität zu Lübeck. Für die Jahre 1998 und früher liegen leider keine genauen Zahlen für die Mediziner vor, die Angaben sind geschätzt. 
+        <br/>
+        <br/>
+        Dieses Diagramm wurde ursprünglich im Oktober 2013 programmiert und im Oktober 2015 aktualisiert.</p>
         <div id="chart">
             <form id="coursecheckboxes">
                 <label id="checkmed"><input type="checkbox" name="course" value="med" checked>Humanmedizin</label>
                 <label id="checkinfo"><input type="checkbox" name="course" value="info" checked>Informatik</label>
                 <label id="checkmedinfo"><input type="checkbox" name="course" value="medinfo" checked>Medizinische Informatik</label>
+                <label id="checkmedieninfo"><input type="checkbox" name="course" value="medieninfo" checked>Medieninformatik</label>
                 <label id="checkmls"><input type="checkbox" name="course" value="mls" checked>MLS</label>
                 <label id="checkmath"><input type="checkbox" name="course" value="math" checked>CLS/MML</label>
                 <label id="checkmiw"><input type="checkbox" name="course" value="miw" checked>MIW</label>
                 <label id="checkpsycho"><input type="checkbox" name="course" value="psycho" checked>Psychologie</label>
+                <label id="checkpflege"><input type="checkbox" name="course" value="pflege" checked>Pflege</label>
             </form>
         </div>
         <script type="text/javascript">
@@ -51,10 +58,12 @@
                 math:"#ff5300",
                 miw:"#c7007d",
                 medinfo:"#50026e",
-                psycho:"#408ad2"
+                medieninfo:"#9933cc",
+                psycho:"#408ad2",
+                pflege:"#00cc99"
             };
 
-            var color = [colors.med, colors.info, colors.medinfo, colors.mls, colors.math, colors.miw, colors.psycho];
+            var color = [colors.med, colors.info, colors.medinfo, colors.medieninfo, colors.mls, colors.math, colors.miw, colors.psycho, colors.pflege];
 
             d3.select("#checkmed")
                 .style("background-color", colors.med)
@@ -66,6 +75,9 @@
             d3.select("#checkmedinfo").style("background-color", colors.medinfo)
                 .select("input")
                     .on("change", checkMedInfo);
+            d3.select("#checkmedieninfo").style("background-color", colors.medieninfo)
+                .select("input")
+                    .on("change", checkMedienInfo);
             d3.select("#checkmls").style("background-color", colors.mls)
                 .select("input")
                     .on("change", checkMls);
@@ -78,6 +90,9 @@
             d3.select("#checkpsycho").style("background-color", colors.psycho)
                 .select("input")
                     .on("change", checkPsycho);
+            d3.select("#checkpflege").style("background-color", colors.pflege)
+                .select("input")
+                    .on("change", checkPflege);
 
             var svg = d3.select("#chart")
                 .append("svg")
@@ -89,42 +104,34 @@
 
             var m;
             var x,y;
-            var layerEmpty, layerMed, layerInfo, layerMedInfo, layerMls, layerMath, layerMiw, layerPsycho;
+            var layerEmpty, layerMed, layerInfo, layerMedInfo, layerMedienInfo, layerMls, layerMath, layerMiw, layerPsycho, layerPflege;
 
             var layers;
             var sums;
             var years;
 
-            d3.csv("https://docs.google.com/spreadsheet/pub?key=0Agj-BZQYrdHBdG50UjM2RXQtcTZ0Uzk1bWEzN1ZBZ3c&single=true&gid=0&output=csv", 
+            d3.csv("https://raw.githubusercontent.com/StudentenPACK/open-data/1eac7595ff26053d1198385e1a45936cf3b79e97/erstsemester.csv", 
                 function(d){
                     return {
                         year: new Date(+d.Jahr, 0, 1),
-                        studentsTotal: +d['Studierende insgesamt'],
-                        freshmen: +d.Erstis,
-                        freshmenFemaleRatio: parseFloat(d['Erstis weiblich'].replace(",",".")),
-                        freshmenInternationalRatio: parseFloat(d['Erstis ausländisch'].replace(",",".")),
-                        freshmenMed: +d['Erstis Medizin'],
-                        freshmenMedFemaleRatio: parseFloat(d['Erstis Medizin weiblich'].replace(",",".")),
-                        freshmenInfo: +d['Erstis Informatik'],
-                        freshmenInfoFemaleRatio: parseFloat(d['Erstis Informatik weiblich'].replace(",",".")),
-                        freshmenMls: +d['Erstis MLS'],
-                        freshmenMlsFemaleRatio: parseFloat(d['Erstis MLS weiblich'].replace(",",".")),
-                        freshmenMath: +d['Erstis CLS/MML'],
-                        freshmenMathFemaleRatio: parseFloat(d['Erstis CLS/MML weiblich'].replace(",",".")),
-                        freshmenMiw: +d['Erstis MIW'],
-                        freshmenMiwFemaleRatio: parseFloat(d['Erstis MIW weiblich'].replace(",",".")),
-                        freshmenMedInfo: +d['Erstis Medizinische Informatik'],
-                        freshmenMedInfoFemaleRatio: parseFloat(d['Erstis Medizinische Informatik weiblich'].replace(",",".")),
-                        freshmenPsycho: +d['Erstis Psychologie'],
-                        freshmenPsychoFemaleRatio: parseFloat(d['Erstis Psychologie weiblich'].replace(",",".")),
-                        source: d.Quelle
+                        freshmen: +d['Erstis'],
+                        freshmenMed: +(d['Jahr']>1999?d['E_Medizin']:200), //default 200 for pre 1999
+                        freshmenInfo: +d['E_Informatik'],
+                        freshmenMls: +d['E_MLS'],
+                        freshmenMath: +d['E_CLS/MML'],
+                        freshmenMiw: +d['E_MIW'],
+                        freshmenMedInfo: +d['E_Medizinische_Informatik'],
+                        freshmenPsycho: +d['E_Psychologie'],
+                        freshmenMedienInfo: +d['E_Medieninformatik'],
+                        freshmenPflege: +d['E_Pflege'],
+                        sources: d.Quellen
                     };
                 }, function(error, rows){
                     if(rows==null){
                         d3.select("#description").text("oh noes! something went horribly wrong! There is no data!");
                     } else {
                         populateFields(rows);
-                        layers = [layerMed, layerInfo, layerMedInfo, layerMls, layerMath, layerMiw, layerPsycho];
+                        layers = [layerMed, layerInfo, layerMedInfo, layerMedienInfo, layerMls, layerMath, layerMiw, layerPsycho, layerPflege];
                         stack(layers);
                         redraw();
                     }
@@ -132,14 +139,16 @@
 
                 function populateFields(data){
                     m = data.length;
-                    layerEmpty = d3.range(m).map(function(x,i){return {x:i, y:0}});
-                    layerMed = data.map(function(x,i){return {x:i, y:x.freshmenMed}});
-                    layerInfo = data.map(function(x,i){return {x:i, y:x.freshmenInfo}});
-                    layerMedInfo = data.map(function(x,i){return {x:i, y:x.freshmenMedInfo}});
-                    layerMls = data.map(function(x,i){return {x:i, y:x.freshmenMls}});
-                    layerMath = data.map(function(x,i){return {x:i, y:x.freshmenMath}});
-                    layerMiw = data.map(function(x,i){return {x:i, y:x.freshmenMiw}});
-                    layerPsycho = data.map(function(x,i){return {x:i, y:x.freshmenPsycho}});
+                    layerEmpty = d3.range(m).map(function(d,i){return {x:i, y:0}});
+                    layerMed = data.map(function(d,i){return {x:i, y:d.freshmenMed}});
+                    layerInfo = data.map(function(d,i){return {x:i, y:d.freshmenInfo}});
+                    layerMedInfo = data.map(function(d,i){return {x:i, y:d.freshmenMedInfo}});
+                    layerMedienInfo = data.map(function(d,i){return {x:i, y:d.freshmenMedienInfo}});
+                    layerMls = data.map(function(d,i){return {x:i, y:d.freshmenMls}});
+                    layerMath = data.map(function(d,i){return {x:i, y:d.freshmenMath}});
+                    layerMiw = data.map(function(d,i){return {x:i, y:d.freshmenMiw}});
+                    layerPsycho = data.map(function(d,i){return {x:i, y:d.freshmenPsycho}});
+                    layerPflege = data.map(function(d,i){return {x:i, y:d.freshmenPflege}});
 
                     years = data.map(function(x){return x.year.getFullYear()})
 
@@ -182,9 +191,9 @@
                     redraw();
                 }
 
-                function checkMls(){
+                function checkMedienInfo(){
                     if (this.checked){
-                        layers[3] = layerMls;
+                        layers[3] = layerMedienInfo;
                     } else {
                         layers[3] = layerEmpty;
                     }
@@ -192,9 +201,10 @@
                     redraw();
                 }
 
-                function checkMath(){
+
+                function checkMls(){
                     if (this.checked){
-                        layers[4] = layerMath;
+                        layers[4] = layerMls;
                     } else {
                         layers[4] = layerEmpty;
                     }
@@ -202,9 +212,9 @@
                     redraw();
                 }
 
-                function checkMiw(){
+                function checkMath(){
                     if (this.checked){
-                        layers[5] = layerMiw;
+                        layers[5] = layerMath;
                     } else {
                         layers[5] = layerEmpty;
                     }
@@ -212,15 +222,36 @@
                     redraw();
                 }
 
-                function checkPsycho(){
+                function checkMiw(){
                     if (this.checked){
-                        layers[6] = layerPsycho;
+                        layers[6] = layerMiw;
                     } else {
                         layers[6] = layerEmpty;
                     }
                     stack(layers);
                     redraw();
                 }
+
+                function checkPsycho(){
+                    if (this.checked){
+                        layers[7] = layerPsycho;
+                    } else {
+                        layers[7] = layerEmpty;
+                    }
+                    stack(layers);
+                    redraw();
+                }
+
+                function checkPflege(){
+                    if (this.checked){
+                        layers[8] = layerPflege;
+                    } else {
+                        layers[8] = layerEmpty;
+                    }
+                    stack(layers);
+                    redraw();
+                }
+
 
                 function redraw(){
                     svg.selectAll(".layer").remove();
@@ -297,7 +328,7 @@
         </script>
         <div id="sources" class="text">
             <h2>Quellen</h2>
-            <p>Rohdaten in dieser <a href="https://docs.google.com/spreadsheet/ccc?key=0Agj-BZQYrdHBdG50UjM2RXQtcTZ0Uzk1bWEzN1ZBZ3c&amp;usp=sharing" target="_blank">Google Tabelle</a>. Quellen für die einzelnen Jahre sind dort verlinkt.</p>
+            <p>Rohdaten in dieser <a href="https://github.com/StudentenPACK/open-data/blob/master/erstsemester.csv" target="_blank">csv-Datei</a>. Quellen für die einzelnen Jahre sind dort notiert.</p>
         </div>
     </body>
 </html>    
