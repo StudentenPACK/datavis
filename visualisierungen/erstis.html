@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Erstsemesterzahlen Uni Lübeck</title>
+        <script type="text/javascript" src="lib/d3.v3.js"></script>
+        <style type="text/css">
+            .pagetitle {
+                font-size: 20px;
+                font-family: Helvetica, Arial, sans-serif;
+            }
+
+            .text {
+                font-family: Georgia, Times, serif;
+                font-size: 12px;
+                color: #666;
+                width: 1000px;
+            }
+
+            #coursecheckboxes label{
+                color: #fff;
+                padding: 4px;
+            }
+</style>
+    </head>
+    <body>
+        <h1 id="pagetitle">Entwicklung der Erstsemesterzahlen an der Universität zu Lübeck</h1>
+        <p id="description" class="text">Dargestellt sind die Erstsemesterzahlen für die einzelnen Studiengänge an der Universität zu Lübeck. Für die Jahre 1998 und früher liegen leider keine genauen Zahlen für die Mediziner vor, die Angaben sind geschätzt. Für die Jahre 2003 und 2005 gibt es leider gar keine Quellen. </p>
+        <div id="chart">
+            <form id="coursecheckboxes">
+                <label id="checkmed"><input type="checkbox" name="course" value="med" checked>Humanmedizin</label>
+                <label id="checkinfo"><input type="checkbox" name="course" value="info" checked>Informatik</label>
+                <label id="checkmedinfo"><input type="checkbox" name="course" value="medinfo" checked>Medizinische Informatik</label>
+                <label id="checkmls"><input type="checkbox" name="course" value="mls" checked>MLS</label>
+                <label id="checkmath"><input type="checkbox" name="course" value="math" checked>CLS/MML</label>
+                <label id="checkmiw"><input type="checkbox" name="course" value="miw" checked>MIW</label>
+                <label id="checkpsycho"><input type="checkbox" name="course" value="psycho" checked>Psychologie</label>
+            </form>
+        </div>
+        <script type="text/javascript">
+
+            var w = 1000;
+            var h = 500;
+            var spacing = 1;
+            var marginbottom = 20;
+            var margintop = 20;
+            var colors = {
+                med:"#a60000",
+                info:"#1b1bb3",
+                mls:"#008500",
+                math:"#ff5300",
+                miw:"#c7007d",
+                medinfo:"#50026e",
+                psycho:"#408ad2"
+            };
+
+            var color = [colors.med, colors.info, colors.medinfo, colors.mls, colors.math, colors.miw, colors.psycho];
+
+            d3.select("#checkmed")
+                .style("background-color", colors.med)
+                .select("input")
+                    .on("change", checkMed);
+            d3.select("#checkinfo").style("background-color", colors.info)
+                .select("input")
+                    .on("change", checkInfo);
+            d3.select("#checkmedinfo").style("background-color", colors.medinfo)
+                .select("input")
+                    .on("change", checkMedInfo);
+            d3.select("#checkmls").style("background-color", colors.mls)
+                .select("input")
+                    .on("change", checkMls);
+            d3.select("#checkmath").style("background-color", colors.math)
+                .select("input")
+                    .on("change", checkMath);
+            d3.select("#checkmiw").style("background-color", colors.miw)
+                .select("input")
+                    .on("change", checkMiw);
+            d3.select("#checkpsycho").style("background-color", colors.psycho)
+                .select("input")
+                    .on("change", checkPsycho);
+
+            var svg = d3.select("#chart")
+                .append("svg")
+                .attr("width", w)
+                .attr("height", h);
+            
+            var stack = d3.layout.stack();
+
+
+            var m;
+            var x,y;
+            var layerEmpty, layerMed, layerInfo, layerMedInfo, layerMls, layerMath, layerMiw, layerPsycho;
+
+            var layers;
+            var sums;
+            var years;
+
+            d3.csv("https://docs.google.com/spreadsheet/pub?key=0Agj-BZQYrdHBdG50UjM2RXQtcTZ0Uzk1bWEzN1ZBZ3c&single=true&gid=0&output=csv", 
+                function(d){
+                    return {
+                        year: new Date(+d.Jahr, 0, 1),
+                        studentsTotal: +d['Studierende insgesamt'],
+                        freshmen: +d.Erstis,
+                        freshmenFemaleRatio: parseFloat(d['Erstis weiblich'].replace(",",".")),
+                        freshmenInternationalRatio: parseFloat(d['Erstis ausländisch'].replace(",",".")),
+                        freshmenMed: +d['Erstis Medizin'],
+                        freshmenMedFemaleRatio: parseFloat(d['Erstis Medizin weiblich'].replace(",",".")),
+                        freshmenInfo: +d['Erstis Informatik'],
+                        freshmenInfoFemaleRatio: parseFloat(d['Erstis Informatik weiblich'].replace(",",".")),
+                        freshmenMls: +d['Erstis MLS'],
+                        freshmenMlsFemaleRatio: parseFloat(d['Erstis MLS weiblich'].replace(",",".")),
+                        freshmenMath: +d['Erstis CLS/MML'],
+                        freshmenMathFemaleRatio: parseFloat(d['Erstis CLS/MML weiblich'].replace(",",".")),
+                        freshmenMiw: +d['Erstis MIW'],
+                        freshmenMiwFemaleRatio: parseFloat(d['Erstis MIW weiblich'].replace(",",".")),
+                        freshmenMedInfo: +d['Erstis Medizinische Informatik'],
+                        freshmenMedInfoFemaleRatio: parseFloat(d['Erstis Medizinische Informatik weiblich'].replace(",",".")),
+                        freshmenPsycho: +d['Erstis Psychologie'],
+                        freshmenPsychoFemaleRatio: parseFloat(d['Erstis Psychologie weiblich'].replace(",",".")),
+                        source: d.Quelle
+                    };
+                }, function(error, rows){
+                    if(rows==null){
+                        d3.select("#description").text("oh noes! something went horribly wrong! There is no data!");
+                    } else {
+                        populateFields(rows);
+                        layers = [layerMed, layerInfo, layerMedInfo, layerMls, layerMath, layerMiw, layerPsycho];
+                        stack(layers);
+                        redraw();
+                    }
+                });
+
+                function populateFields(data){
+                    m = data.length;
+                    layerEmpty = d3.range(m).map(function(x,i){return {x:i, y:0}});
+                    layerMed = data.map(function(x,i){return {x:i, y:x.freshmenMed}});
+                    layerInfo = data.map(function(x,i){return {x:i, y:x.freshmenInfo}});
+                    layerMedInfo = data.map(function(x,i){return {x:i, y:x.freshmenMedInfo}});
+                    layerMls = data.map(function(x,i){return {x:i, y:x.freshmenMls}});
+                    layerMath = data.map(function(x,i){return {x:i, y:x.freshmenMath}});
+                    layerMiw = data.map(function(x,i){return {x:i, y:x.freshmenMiw}});
+                    layerPsycho = data.map(function(x,i){return {x:i, y:x.freshmenPsycho}});
+
+                    years = data.map(function(x){return x.year.getFullYear()})
+
+                    x = d3.scale.ordinal()
+                        .domain(d3.range(m))
+                        .rangeRoundBands([0, w], .08);
+
+                    y = d3.scale.linear()
+                        .domain([0, d3.max(data, function(d) { return d.freshmen; })])
+                        .range([h - marginbottom, 0 + margintop]);
+                }
+
+                function checkMed(){
+                    if (this.checked){
+                        layers[0] = layerMed;
+                    } else {
+                        layers[0] = layerEmpty;
+                    }
+                    stack(layers);
+                    redraw();
+                }
+
+                function checkInfo(){
+                    if (this.checked){
+                        layers[1] = layerInfo;
+                    } else {
+                        layers[1] = layerEmpty;
+                    }
+                    stack(layers);
+                    redraw();
+                }
+
+                function checkMedInfo(){
+                    if (this.checked){
+                        layers[2] = layerMedInfo;
+                    } else {
+                        layers[2] = layerEmpty;
+                    }
+                    stack(layers);
+                    redraw();
+                }
+
+                function checkMls(){
+                    if (this.checked){
+                        layers[3] = layerMls;
+                    } else {
+                        layers[3] = layerEmpty;
+                    }
+                    stack(layers);
+                    redraw();
+                }
+
+                function checkMath(){
+                    if (this.checked){
+                        layers[4] = layerMath;
+                    } else {
+                        layers[4] = layerEmpty;
+                    }
+                    stack(layers);
+                    redraw();
+                }
+
+                function checkMiw(){
+                    if (this.checked){
+                        layers[5] = layerMiw;
+                    } else {
+                        layers[5] = layerEmpty;
+                    }
+                    stack(layers);
+                    redraw();
+                }
+
+                function checkPsycho(){
+                    if (this.checked){
+                        layers[6] = layerPsycho;
+                    } else {
+                        layers[6] = layerEmpty;
+                    }
+                    stack(layers);
+                    redraw();
+                }
+
+                function redraw(){
+                    svg.selectAll(".layer").remove();
+                    svg.selectAll("g").remove();
+                    var layer = svg.selectAll(".layer")
+                        .data(layers)
+                        .enter()
+                        .append("g")
+                            .attr("class", "layer")
+                            .style("fill", function(d, i) { return color[i]; });
+
+                    var rect = layer.selectAll("rect")
+                        .data(function(d) { return d; })
+                        .enter();
+                    rect.append("rect")
+                        .attr("x", function(d) { return x(d.x); })
+                        .attr("y", function(d) { return y(d.y0 + d.y); })
+                        .attr("width", x.rangeBand())
+                        .attr("height", function(d) { return y(d.y0) - y(d.y0 + d.y); });
+                    rect.append("text")
+                        .text(function(d){if (d.y > 0) {return d.y}})
+                        .attr("text-anchor", "middle")
+                        .attr("dominant-baseline", "middle")
+                        .attr("x", function(d, i) {
+                            return x(i)+x.rangeBand()/2;
+                        })
+                        .attr("y", function(d) { return y(d.y0 + d.y/2); })
+                        .attr("fill", "#fff")
+                        .style("font-size", "10px")
+                        .style("font-family", "Helvetica, Arial, sans-serif");
+
+                    //Summen
+                    var labelsSum = svg.selectAll(".labels_sum")
+                        .data(layers[layers.length-1])
+                        .enter()
+                        .append("g")
+                            .attr("class", "labels")
+                            .attr("fill", "#000")
+                            .style("font-size", "12px")
+                            .style("font-family", "Helvetica, Arial, sans-serif");
+                    labelsSum.append("text")
+                        .text(function(d){
+                            return d.y0 + d.y;
+                        })
+                        .attr("text-anchor", "middle")
+                        .attr("x", function(d, i) {
+                            return x(i)+x.rangeBand()/2;
+                        })
+                        .attr("y", function(d) {
+                            return y(d.y0 + d.y) - 25 + marginbottom;
+                        });
+
+                    //Jahre
+                    var labelsYear = svg.selectAll(".labels_year")
+                        .data(years)
+                        .enter()
+                        .append("g")
+                            .attr("class", "labels_year")
+                            .attr("fill", "#000")
+                            .style("font-size", "12px")
+                            .style("font-family", "Helvetica, Arial, sans-serif");
+                    labelsYear.append("text")
+                        .text(function(d){
+                            return d;
+                        })
+                        .attr("text-anchor", "middle")
+                        .attr("x", function(d, i) {
+                            return x(i)+x.rangeBand()/2;
+                        })
+                        .attr("y", function(d) {
+                            return h - 5;
+                        });
+                }
+        </script>
+        <div id="sources" class="text">
+            <h2>Quellen</h2>
+            <p>Rohdaten in dieser <a href="https://docs.google.com/spreadsheet/ccc?key=0Agj-BZQYrdHBdG50UjM2RXQtcTZ0Uzk1bWEzN1ZBZ3c&amp;usp=sharing" target="_blank">Google Tabelle</a>. Quellen für die einzelnen Jahre sind dort verlinkt.</p>
+        </div>
+    </body>
+</html>    
