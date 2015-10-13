@@ -1,1 +1,4 @@
+- *absolventen.csv* Statistiken zu den Absolbventenzahlen der Universität zu Lübeck, hauptsächlich aus den Pressemitteilungen zur Bachelorvergabe und zur Promotionsfeier
 - *erstsemester.csv* Statistiken zu den Erstsemesterzahlen der Universität zu Lübeck, hauptsächlich aus den Pressemitteilungen zum jeweiligen Semesterbeginn.
+- *wahlbeteiligungen.csv* Daten zur Wahlbeteiligung bei Studentischen Wahlen aus unterschiedlichen Quellen. Gerade bei länger zurückligenden Daten ist einiges Zweifelhaft.
+- *wahlbeteiligungen_all.csv* Daten zu studentischer Wahlbeteiligung in Lübeck und an anderen Universitäten zum Vergleich.
