@@ -1,11 +1,1 @@
-datavis
-=======
-
-currently just some experimental stuff, never been officially used 
-
-erstis: http://code.phibography.de/d3js/erstis.html
-
-credits
-=======
-
-D3.js http://d3js.org/
+- *erstsemester.csv* Statistiken zu den Erstsemesterzahlen der Universität zu Lübeck, hauptsächlich aus den Pressemitteilungen zum jeweiligen Semesterbeginn.
